@@ -1,0 +1,6 @@
+pipeline:
+  build:
+    image: python:3.6.5-slim-jessie
+    commands:
+      - pip install -r requirements_dev.txt
+      - pytest
