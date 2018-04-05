@@ -1,4 +1,6 @@
 from flask import Flask
+from flask_migrate import Migrate
+from flask_sqlalchemy import SQLAlchemy
 
 from .config import Config
 
@@ -7,6 +9,18 @@ app = Flask(__name__)
 app.config.from_object(Config)
 
 # set up plugins
+db = SQLAlchemy(app)
+migrate = Migrate(app, db)
+
+from app import models, routes  # noqa
+from .models import Appointment, Patient, Provider  # noqa
 
 
-from app import routes  # noqa
+@app.shell_context_processor
+def make_shell_context():
+    return {
+        'db': db,
+        'Appointment': Appointment,
+        'Patient': Patient,
+        'Provider': Provider,
+    }

@@ -1,5 +1,7 @@
 Flask
+flask-migrate
 flask-restful
+flask-sqlalchemy
 gunicorn
 psycopg2
 webargs
