@@ -42,15 +42,23 @@ attach: ## Attach to web container
 logs:
 	docker logs -f app_web
 
+flask_shell: ## Shell into Flask process
+	docker-compose exec web flask konch
+
 shell: ## Shell into web container
-	$(eval CONTAINER_SHA=$(shell docker-compose ps -q web))
-	docker exec -it $(CONTAINER_SHA) bash
+	docker-compose exec web bash
 
 dbshell: ## Shell into postgres process inside db container
 	docker-compose exec db psql -U postgres -d sivdev
 
-migrate: up ## Run migrations using flyway
-	echo "need to setup migrations"
+migrations: up ## Create migrations using flask migrate
+	docker-compose exec web flask db migrate -m "$(m)"
+
+migrate: up ## Run migrations using flask migrate
+	docker-compose exec web flask db upgrade
+
+migrate_back: up ## Rollback migrations using flask migrate
+	docker-compose exec web flask db downgrade
 
 test: migrate
 	docker-compose exec web pytest

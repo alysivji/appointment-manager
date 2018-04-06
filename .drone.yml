@@ -1,6 +1,16 @@
 pipeline:
   build:
     image: python:3.6.5-slim-jessie
+    environment:
+      FLASK_APP: app/__init__.py
     commands:
       - pip install -r requirements_dev.txt
+      - flask db upgrade
       - pytest
+services:
+  db:
+    image: postgres:10.3-alpine
+    environment:
+      POSTGRES_DB: sivdev
+      POSTGRES_USER: sivpack
+      POSTGRES_PASSWORD: sivpack_dev
