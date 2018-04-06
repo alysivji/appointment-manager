@@ -1,7 +1,9 @@
 Flask
+flask-konch
 flask-migrate
 flask-restful
 flask-sqlalchemy
+ipython
 gunicorn
 psycopg2
 webargs

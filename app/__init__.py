@@ -15,12 +15,12 @@ migrate = Migrate(app, db)
 from app import models, routes  # noqa
 from .models import Appointment, Patient, Provider  # noqa
 
-
-@app.shell_context_processor
-def make_shell_context():
-    return {
+# set up flask konch (beefed up flask shell)
+app.config.update({
+    'KONCH_CONTEXT': {
         'db': db,
         'Appointment': Appointment,
         'Patient': Patient,
         'Provider': Provider,
     }
+})
