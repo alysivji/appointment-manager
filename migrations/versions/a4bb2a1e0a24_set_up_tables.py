@@ -1,8 +1,8 @@
-"""Initial model creation
+"""Set up tables
 
-Revision ID: fc1ae25cd391
+Revision ID: a4bb2a1e0a24
 Revises: 
-Create Date: 2018-04-05 21:53:17.768436
+Create Date: 2018-04-06 03:08:53.242092
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'fc1ae25cd391'
+revision = 'a4bb2a1e0a24'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -43,9 +43,9 @@ def upgrade():
     sa.Column('start', sa.DateTime(), nullable=False),
     sa.Column('end', sa.DateTime(), nullable=False),
     sa.Column('department', sa.String(length=50), nullable=False),
-    sa.Column('patiend_id', sa.Integer(), nullable=False),
+    sa.Column('patient_id', sa.Integer(), nullable=False),
     sa.Column('provider_id', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['patiend_id'], ['patient.id'], ),
+    sa.ForeignKeyConstraint(['patient_id'], ['patient.id'], ),
     sa.ForeignKeyConstraint(['provider_id'], ['provider.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
