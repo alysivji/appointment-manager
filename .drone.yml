@@ -7,7 +7,7 @@ pipeline:
       - pytest
   services:
     db:
-      image: postgres:10.3-alpine
+      image: postgres
       environment:
         - POSTGRES_DB: sivdev
         - POSTGRES_USER: sivpack
