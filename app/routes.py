@@ -1,8 +1,12 @@
 from flask import jsonify
 
-from app import app
+from app import app, api
+from app.resources.appointment import Appointment
 
 
 @app.route('/')
 def index():
-    return jsonify({'Hello': 'World'})
+    return jsonify({'index': 'page'})
+
+
+api.add_resource(Appointment, '/appointments')
