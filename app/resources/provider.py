@@ -18,7 +18,7 @@ provider_list_schema = ProviderSchema(many=True)
 provider_schema = ProviderSchema()
 
 
-class ProviderResource(Resource):
+class ProvidersResource(Resource):
     def get(self):
         all_providers = Provider.query.all()
         result = provider_list_schema.dump(all_providers)
@@ -37,3 +37,22 @@ class ProviderResource(Resource):
         }
 
         return {}, 201, HEADERS
+
+
+class ProvidersItemResource(Resource):
+    def get(self, provider_id):
+        provider = Provider.query.filter(Provider.id == provider_id).all()
+        if len(provider) == 0:
+            return None, 404
+
+        result = provider_schema.dump(provider[0])
+        return result.data, 200
+
+    def delete(self, provider_id):
+        provider = Provider.query.filter(Provider.id == provider_id).all()
+        if len(provider) == 0:
+            return None, 404
+
+        db.session.delete(provider[0])
+        db.session.commit()
+        return None, 204

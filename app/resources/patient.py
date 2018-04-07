@@ -18,7 +18,7 @@ patient_list_schema = PatientSchema(many=True)
 patient_schema = PatientSchema()
 
 
-class PatientResource(Resource):
+class PatientsResource(Resource):
     def get(self):
         all_patients = Patient.query.all()
         result = patient_list_schema.dump(all_patients)
@@ -37,3 +37,22 @@ class PatientResource(Resource):
         }
 
         return {}, 201, HEADERS
+
+
+class PatientsItemResource(Resource):
+    def get(self, patient_id):
+        patient = Patient.query.filter(Patient.id == patient_id).all()
+        if len(patient) == 0:
+            return None, 404
+
+        result = patient_schema.dump(patient[0])
+        return result.data, 200
+
+    def delete(self, patient_id):
+        patient = Patient.query.filter(Patient.id == patient_id).all()
+        if len(patient) == 0:
+            return None, 404
+
+        db.session.delete(patient[0])
+        db.session.commit()
+        return None, 204
