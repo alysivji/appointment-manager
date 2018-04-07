@@ -52,4 +52,5 @@ class Appointment(TimestampMixin, db.Model):
     provider = db.relationship('Provider', back_populates='appointments')
 
     def __repr__(self):
-        return (f'<Appointment {self.patient} with {self.provider} @ {self.start}>')
+        return (f'<Appointment {self.patient} with ',
+                f'{self.provider} @ {self.start}>')

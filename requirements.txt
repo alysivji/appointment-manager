@@ -1,9 +1,11 @@
 Flask
 flask-konch
+flask-marshmallow
 flask-migrate
 flask-restful
 flask-sqlalchemy
 ipython
 gunicorn
+marshmallow-sqlalchemy
 psycopg2
 webargs
