@@ -27,6 +27,11 @@ APPOINTMENT_SCHEMA_POST = {
     'department': fields.Str(locations='json', required=True),
 }
 
+APPOINTMENT_SCHEMA_GET = {
+    'dt_gte': fields.DateTime(locations='query'),
+    'dt_lte': fields.DateTime(locations='query'),
+}
+
 # Configure serializing models to JSON for response
 appointments_list_schema = AppointmentSchema(many=True)
 appointment_schema = AppointmentSchema()
@@ -37,9 +42,21 @@ appointment_schema = AppointmentSchema()
 ###########
 
 class AppointmentsResource(Resource):
-    def get(self):
-        all_appointments = Appointment.query.all()
+    @use_args(APPOINTMENT_SCHEMA_GET)
+    def get(self, args):
+        # set up query
+        all_appointments = Appointment.query
+
+        # filter by query parameters as required
+        if 'dt_lte' in args:
+            all_appointments = all_appointments.filter(Appointment.start <= args['dt_lte'])
+        if 'dt_gte' in args:
+            all_appointments = all_appointments.filter(Appointment.end >= args['dt_gte'])
+
+        # output query
+        all_appointments = all_appointments.all()
         result = appointments_list_schema.dump(all_appointments)
+
         return result.data, 200
 
     @use_args(APPOINTMENT_SCHEMA_POST)
