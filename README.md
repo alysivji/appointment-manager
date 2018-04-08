@@ -6,7 +6,8 @@ This project will expose an API that users can use to createe, delete, and modif
 
 * `make shell` to connect to web app container
   * `flask db init` creates new migration repository
-  * `flask db migrate -m "message"` generates migration script   * `flask db upgrade` runs migrations
+  * `flask db migrate -m "message"` generates migration script
+  * `flask db upgrade` runs migrations
   * `flask db downgrade` rolls back migration
 
 ## Think About
@@ -17,3 +18,4 @@ When sending back appointment information, we need to think about if we want to 
 
 * All datetimes are UTC
 * closed interval on appointment start, open interval on appointment end
+* maybe an is_available_function would be a good refactor

@@ -19,12 +19,12 @@ BOOKING_DELAY_IN_HOURS = app.config.get('BOOKING_DELAY_IN_HOURS')
 MAX_APPT_LENGTH_IN_MINUTES = app.config.get('MAX_APPT_LENGTH_IN_MINUTES')
 
 # Configure reading from requests
-APPOINTMENTS_SCHEMA_POST = {
-  'start': fields.DateTime(location='json', required=True),
-  'duration': fields.Int(location='json', required=True),  # in minutes
-  'patient_id': fields.Int(location='json', required=True),
-  'provider_id': fields.Int(location='json', required=True),
-  'department': fields.Str(location='json', required=True),
+APPOINTMENT_SCHEMA_POST = {
+    'start': fields.DateTime(locations='json', required=True),
+    'duration': fields.Int(locations='json', required=True),  # in minutes
+    'patient_id': fields.Int(locations='json', required=True),
+    'provider_id': fields.Int(locations='json', required=True),
+    'department': fields.Str(locations='json', required=True),
 }
 
 # Configure serializing models to JSON for response
@@ -42,7 +42,7 @@ class AppointmentsResource(Resource):
         result = appointments_list_schema.dump(all_appointments)
         return result.data, 200
 
-    @use_args(APPOINTMENTS_SCHEMA_POST)
+    @use_args(APPOINTMENT_SCHEMA_POST)
     def post(self, args):
         output = {
             'data': None,
@@ -81,7 +81,7 @@ class AppointmentsResource(Resource):
 
         appt_end_time = appt_start_time + timedelta(minutes=appt_length)
 
-        #TODO check if patient is double booked
+        # TODO check if patient is double booked
 
         # is the doctor already booked for this slot?
         appointments_start_time_interrupts = (
@@ -132,3 +132,22 @@ class AppointmentsResource(Resource):
         # have a AppointmentNotifierWebhook
 
         return {}, 201, HEADERS
+
+
+class AppointmentsItemResource(Resource):
+    def get(self, appointment_id):
+        appointment = Appointment.query.filter(Appointment.id == appointment_id).all()
+        if len(appointment) == 0:
+            return None, 404
+
+        result = appointment_schema.dump(appointment[0])
+        return result.data, 200
+
+    def delete(self, appointment_id):
+        appointment = Appointment.query.filter(Appointment.id == appointment_id).all()
+        if len(appointment) == 0:
+            return None, 404
+
+        db.session.delete(appointment[0])
+        db.session.commit()
+        return None, 204
