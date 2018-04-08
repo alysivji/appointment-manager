@@ -2,10 +2,14 @@ from flask_restful import Resource
 from webargs import fields
 from webargs.flaskparser import use_args
 
-from app import db, Provider
-from app.config import BASE_URL
+from app import app, db, Provider
 from app.schemas import ProviderSchema
 
+###############
+# Configuration
+###############
+
+BASE_URL = app.config.get('BASE_URL')
 
 # Configure reading from requests
 PROVIDER_SCHEMA_POST = {
@@ -17,6 +21,10 @@ PROVIDER_SCHEMA_POST = {
 provider_list_schema = ProviderSchema(many=True)
 provider_schema = ProviderSchema()
 
+
+###########
+# Resources
+###########
 
 class ProvidersResource(Resource):
     def get(self):

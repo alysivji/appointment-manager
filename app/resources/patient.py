@@ -2,10 +2,14 @@ from flask_restful import Resource
 from webargs import fields
 from webargs.flaskparser import use_args
 
-from app import db, Patient
-from app.config import BASE_URL
+from app import app, db, Patient
 from app.schemas import PatientSchema
 
+###############
+# Configuration
+###############
+
+BASE_URL = app.config.get('BASE_URL')
 
 # Configure reading from requests
 PATIENTS_SCHEMA_POST = {
@@ -17,6 +21,10 @@ PATIENTS_SCHEMA_POST = {
 patient_list_schema = PatientSchema(many=True)
 patient_schema = PatientSchema()
 
+
+###########
+# Resources
+###########
 
 class PatientsResource(Resource):
     def get(self):
