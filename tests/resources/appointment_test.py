@@ -13,44 +13,6 @@ BOOKING_DELAY_IN_HOURS = app.config.get('BOOKING_DELAY_IN_HOURS')
 MAX_APPT_LENGTH_IN_MINUTES = app.config.get('MAX_APPT_LENGTH_IN_MINUTES')
 
 
-@pytest.fixture
-def single_patient(client):
-    """
-    Create patient, yield id, and delete
-    """
-    body = {
-        'first_name': 'foo',
-        'last_name': 'bar'
-    }
-    result = client.post('/patients', data=body)
-    assert result.status_code == 201
-
-    patient_id = int(result.headers['Location'].split('/')[-1])
-    yield patient_id
-
-    result = client.delete(f'/patients/{patient_id}')
-    assert result.status_code == 204
-
-
-@pytest.fixture
-def single_provider(client):
-    """
-    Create provider, yield id, and delete
-    """
-    body = {
-        'first_name': 'doc',
-        'last_name': 'tor'
-    }
-    result = client.post('/providers', data=body)
-    assert result.status_code == 201
-
-    provider_id = int(result.headers['Location'].split('/')[-1])
-    yield provider_id
-
-    result = client.delete(f'/providers/{provider_id}')
-    assert result.status_code == 204
-
-
 @pytest.mark.freeze_time('2018-04-04T10:00:00.000000+00:00')
 def test_create_appointment(client, single_patient, single_provider):
     """
