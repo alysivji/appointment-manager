@@ -50,6 +50,27 @@ appointment_schema = AppointmentSchema()
 # Helper Methods
 ################
 
+def _appointment_starts_before_booking_delay(appt_start, booking_start):
+    """
+    Some clinics might have rules regarding how far in advance appointments
+    can be made
+
+    If appointment is made before allowable time, inform of error
+    """
+    if not appt_start >= booking_start:
+        error_text = 'Appointment begin before booking window starts'
+        response = create_response(status_code=400, error=error_text)
+        abort(response)
+
+def _appointment_longer_than_max_length(duration):
+    """
+    If appointment duration longer than allowed, return a 400
+    """
+    if duration > MAX_APPT_LENGTH_IN_MINUTES:
+        error_text = 'Appointment length exceeds maximum allowed'
+        response = create_response(status_code=400, error=error_text)
+        abort(response)
+
 def _start_time_overlaps(provider_id_field, provider_id, start_time, allowed_overlap:List=[]):
     """
     Given start time, find what appointments start time overlaps with
@@ -122,26 +143,15 @@ class AppointmentsResource(Resource):
         # is timeslot in the future (given a delay)
         appt_start_time = args['start'].replace(tzinfo=None)
         booking_start = datetime.now() + timedelta(hours=BOOKING_DELAY_IN_HOURS)
-
-        # Some clinics might have rules regarding how far in advance
-        # appointments can be made
-        if not appt_start_time >= booking_start:
-            error_text = 'Appointment begin before booking window starts'
-            response = create_response(status_code=400, error=error_text)
-            return response
+        _appointment_starts_before_booking_delay(appt_start_time, booking_start)
 
         # is appointment duration longer than allowed
         duration = args['duration']
-        if duration > MAX_APPT_LENGTH_IN_MINUTES:
-            error_text = 'Appointment length exceeds maximum allowed'
-            response = create_response(status_code=400, error=error_text)
-            return response
+        _appointment_longer_than_max_length(duration)
 
+        # check if double booked
         appt_end_time = appt_start_time + timedelta(minutes=duration)
-
-        # TODO check if patient is double booked
-        # need clarification on requirements
-
+        # TODO should check if patient double book? need clarification
         _start_time_overlaps(Appointment.provider_id, provider.id, appt_start_time)
         _end_time_overlaps(Appointment.provider_id, provider.id, appt_end_time)
 
@@ -225,15 +235,9 @@ class AppointmentsItemResource(Resource):
             return response
 
         booking_start = datetime.now() + timedelta(hours=BOOKING_DELAY_IN_HOURS)
-        if not appt_start_time >= booking_start:
-            error_text = 'Appointment begin before booking window starts'
-            response = create_response(status_code=400, error=error_text)
-            return response
+        _appointment_starts_before_booking_delay(appt_start_time, booking_start)
 
-        if duration > MAX_APPT_LENGTH_IN_MINUTES:
-            error_text = 'Appointment length exceeds maximum allowed'
-            response = create_response(status_code=400, error=error_text)
-            return response
+        _appointment_longer_than_max_length(duration)
 
         _start_time_overlaps(Appointment.provider_id, provider.id,
                              appt_start_time, allowed_overlap=[appointment.id])
@@ -250,6 +254,5 @@ class AppointmentsItemResource(Resource):
         db.session.commit()
 
         # Send back result
-        # appointment = getitem_or_404(Appointment, Appointment.id, appointment_id)
         result = appointment_schema.dump(appointment)
         return create_response(status_code=200, data=result.data)
