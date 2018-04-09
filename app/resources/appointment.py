@@ -167,9 +167,6 @@ class AppointmentsResource(Resource):
 
 
 class AppointmentsItemResource(Resource):
-    # TODO refactor getitem_404 into function to prevent repeating code
-    # talk about in code review
-
     def get(self, appointment_id):
         appointment = getitem_or_404(Appointment, Appointment.id, appointment_id)
         result = appointment_schema.dump(appointment)
@@ -192,11 +189,7 @@ class AppointmentsItemResource(Resource):
             'error': None,
         }
 
-        try:
-            appointment = getitem_or_404(Appointment, Appointment.id, appointment_id)
-        except NotFound:
-            output['error'] = 'Appointment not found'
-            return output, 404
+        appointment = getitem_or_404(Appointment, Appointment.id, appointment_id)
 
         # if start time is entered, account for it
         if 'start' in args:

@@ -37,7 +37,6 @@ class PatientsResource(Resource):
     def post(self, args):
         new_patient = Patient(first_name=args['first_name'],
                               last_name=args['last_name'])
-
         db.session.add(new_patient)
         db.session.commit()
 

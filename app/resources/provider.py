@@ -37,7 +37,6 @@ class ProvidersResource(Resource):
     def post(self, args):
         new_provider = Provider(first_name=args['first_name'],
                                 last_name=args['last_name'])
-
         db.session.add(new_provider)
         db.session.commit()
 
