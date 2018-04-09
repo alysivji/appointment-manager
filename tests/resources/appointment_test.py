@@ -34,8 +34,7 @@ def test_create_appointment(client, single_patient, single_provider):
 
 
 @pytest.mark.freeze_time('2018-04-04T10:00:00.000000+00:00')
-def test_create_appointment_before_booking_window_starts(
-        client, single_patient, single_provider):
+def test_create_appointment_before_booking_window_starts(client, single_patient, single_provider):
     """
     Do not allow the creation of an appointment before the specified window
     """
@@ -60,8 +59,7 @@ def test_create_appointment_before_booking_window_starts(
 
 
 @pytest.mark.freeze_time('2018-04-04T10:00:00.000000+00:00')
-def test_create_appointment_with_nonexistent_provider(
-        client, single_patient, single_provider):
+def test_create_appointment_with_nonexistent_provider(client, single_patient, single_provider):
     """
     Create appointment with provider that does not exist
     """
@@ -77,8 +75,7 @@ def test_create_appointment_with_nonexistent_provider(
 
 
 @pytest.mark.freeze_time('2018-04-04T10:00:00.000000+00:00')
-def test_create_appointment_with_nonexistent_patient(
-        client, single_patient, single_provider):
+def test_create_appointment_with_nonexistent_patient(client, single_patient, single_provider):
     """
     Create appointment with patient that does not exist
     """
@@ -94,8 +91,7 @@ def test_create_appointment_with_nonexistent_patient(
 
 
 @pytest.mark.freeze_time('2018-04-04T10:00:00.000000+00:00')
-def test_create_appointment_exceeding_max_duration(
-        client, single_patient, single_provider):
+def test_create_appointment_exceeding_max_duration(client, single_patient, single_provider):
     """
     Create appointment with duration greater than max allowed
     """
@@ -114,8 +110,7 @@ def test_create_appointment_exceeding_max_duration(
 
 
 @pytest.mark.freeze_time('2018-04-04T10:00:00.000000+00:00')
-def test_create_appointment_that_starts_too_early(
-        client, single_patient, single_provider):
+def test_create_appointment_that_starts_too_early(client, single_patient, single_provider):
     """
     Create appointment that starts before the previous appointment ends
     """
@@ -146,8 +141,7 @@ def test_create_appointment_that_starts_too_early(
 
 
 @pytest.mark.freeze_time('2018-04-04T10:00:00.000000+00:00')
-def test_create_appointment_that_ends_too_late(
-        client, single_patient, single_provider):
+def test_create_appointment_that_ends_too_late(client, single_patient, single_provider):
     """
     Create appointment that starts before the previous appointment ends
     """
@@ -180,8 +174,7 @@ def test_create_appointment_that_ends_too_late(
 
 
 @pytest.mark.freeze_time('2018-04-04T10:00:00.000000+00:00')
-def test_create_two_appointments_with_no_conflicts(
-        client, single_patient, single_provider):
+def test_create_two_appointments_with_no_conflicts(client, single_patient, single_provider):
     """
     Create appointment that starts before the previous appointment ends
     """
@@ -212,8 +205,10 @@ def test_create_two_appointments_with_no_conflicts(
         assert result.status_code == 204
 
 
-def test_blah(client, freezer, single_patient, single_provider):
+def test_modify_already_occured_appointment(
+        client, freezer, single_patient, single_provider):
     """
+    Create an appointment and try to modify it after it occurs
     """
     # Create first appointment
     freezer.move_to('2018-04-04T10:00:00.000000+00:00')
@@ -241,6 +236,41 @@ def test_blah(client, freezer, single_patient, single_provider):
 
     resp_body = json.loads(result.get_data(as_text=True))
     assert resp_body['error'] == 'Cannot modify appointments in the past'
+
+    result = client.delete(f'/appointments/{appointment_id}')
+    assert result.status_code == 204
+
+
+@pytest.mark.freeze_time('2018-04-04T10:00:00.000000+00:00')
+def test_successful_appointment_modification(client, single_patient, single_provider):
+    """
+    Create an appointment and try to modify it after it occurs
+    """
+    # Create appointment
+    body = {
+        "start": "2018-04-30T10:00:00.000000+00:00",
+        "duration": 60,
+        "provider_id": single_provider,
+        "patient_id": single_patient,
+        "department": "radiology",
+    }
+    result = client.post('/appointments', data=body)
+    assert result.status_code == 201
+    appointment_id = int(result.headers['Location'].split('/')[-1])
+
+    # Modify appointment start
+    new_start_time = "2018-04-20T13:00:00+00:00"
+    new_end_time = "2018-04-20T14:00:00+00:00"
+    body = {
+        "start": new_start_time
+    }
+    result = client.patch(f'/appointments/{appointment_id}', data=body)
+
+    assert result.status_code == 200
+    resp_body = json.loads(result.get_data(as_text=True))['data']
+    assert resp_body['start'] == new_start_time
+    assert resp_body['end'] == new_end_time
+    assert resp_body['department'] == 'radiology'
 
     result = client.delete(f'/appointments/{appointment_id}')
     assert result.status_code == 204

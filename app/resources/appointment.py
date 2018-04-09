@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 import json
+from typing import List
 
 from flask import abort
 from flask_restful import Resource
@@ -35,10 +36,9 @@ APPOINTMENT_SCHEMA_GET = {
 }
 
 APPOINTMENT_SCHEMA_PATCH = {
-    'start': fields.DateTime(),
+    'start': fields.DateTime(required=True),
     'duration': fields.Int(),  # in minutes
-    'department': fields.Str(),
-    'appointment_id': fields.Int(location='view_args', required=True),
+    'department': fields.Str()
 }
 
 # Configure serializing models to JSON for response
@@ -50,11 +50,12 @@ appointment_schema = AppointmentSchema()
 # Helper Methods
 ################
 
-def _start_time_overlaps(provider_id_field, provider_id, start_time):
+def _start_time_overlaps(provider_id_field, provider_id, start_time, allowed_overlap:List=[]):
     """
     Given start time, find what appointments start time overlaps with
 
-    If there is an overlap, let the user know about the conflict, else continue
+    If there is an overlap that is not allowed, let the user know about the
+    conflict, else continue
     """
     appointments_start_time_interrupts = (
         Appointment.query
@@ -63,17 +64,19 @@ def _start_time_overlaps(provider_id_field, provider_id, start_time):
                                 start_time < Appointment.end))
                    .all())
 
-    if len(appointments_start_time_interrupts):
-        response = create_response(
-            status_code=409,
-            error='New appointment starts before already booked appointment ends.')
-        abort(response)
+    for appointment in appointments_start_time_interrupts:
+        if appointment.id not in allowed_overlap:
+            response = create_response(
+                status_code=409,
+                error='New appointment starts before already booked appointment ends.')
+            abort(response)
 
-def _end_time_overlaps(provider_id_field, provider_id, end_time):
+def _end_time_overlaps(provider_id_field, provider_id, end_time, allowed_overlap:List=[]):
     """
     Given start time, find what appointments start time overlaps with
 
-    If there is an overlap, let the user know about the conflict, else continue
+    If there is an overlap that is not allowed, let the user know about the
+    conflict, else continue
     """
     appointments_end_time_interrupts = (
         Appointment.query
@@ -82,11 +85,12 @@ def _end_time_overlaps(provider_id_field, provider_id, end_time):
                              end_time <= Appointment.end))
                 .all())
 
-    if len(appointments_end_time_interrupts):
-        response = create_response(
-            status_code=409,
-            error='New appointment ends after already booked appointment starts.')
-        abort(response)
+    for appointment in appointments_end_time_interrupts:
+        if appointment.id not in allowed_overlap:
+            response = create_response(
+                status_code=409,
+                error='New appointment ends after already booked appointment starts.')
+            abort(response)
 
 
 ###########
@@ -108,7 +112,6 @@ class AppointmentsResource(Resource):
         # output query
         all_appointments = all_appointments.all()
         result = appointments_list_schema.dump(all_appointments)
-
         return result.data, 200
 
     @use_args(APPOINTMENT_SCHEMA_POST)
@@ -157,15 +160,14 @@ class AppointmentsResource(Resource):
         db.session.add(new_appointment)
         db.session.commit()
 
-        HEADERS = {
-            'Location': f'{BASE_URL}/appointments/{new_appointment.id}',
-        }
-
         # need to think about best way to implement a webhook
         # when it's created push it to a pubsub queue
         # can handle the webhook from there... since we don't have that
         # have a AppointmentNotifierWebhook
 
+        HEADERS = {
+            'Location': f'{BASE_URL}/appointments/{new_appointment.id}',
+        }
         return create_response(status_code=201, headers=HEADERS, data={})
 
 
@@ -181,58 +183,73 @@ class AppointmentsItemResource(Resource):
         db.session.commit()
         return create_response(status_code=204, data={})
 
-    @use_args(APPOINTMENT_SCHEMA_PATCH, locations=('view_args', 'json'))
+    @use_args(APPOINTMENT_SCHEMA_PATCH)
     def patch(self, args, appointment_id):
         """
-        Can change the appointment start time, duration, and department.
+        Change the appointment start time, duration, and department.
+
         If you want to change provider and patient, delete and create new.
         """
-        output = {
-            'data': None,
-            'error': None,
-        }
-
         appointment = getitem_or_404(Appointment, Appointment.id, appointment_id)
 
-        if appointment.start < datetime.utcnow():
-            error_text = 'Cannot modify appointments in the past'
-            response = create_response(status_code=400, error=error_text)
-            return response
-
-        # if start time is entered, account for it
-        if 'start' in args:
-            appt_start_time = args['start'].replace(tzinfo=None)
-        else:
-            appt_start_time = appointment.start
-
-        booking_start = (
-            datetime.now() + timedelta(hours=BOOKING_DELAY_IN_HOURS))
-
-        if not appt_start_time >= booking_start:
-            output['error'] = 'Appointment begin before booking window starts'
-            return output, 400
-
-        # if duration is entered, account for it
+        ##################
+        # Handle Arguments
+        ##################
         if 'duration' in args:
             duration = args['duration']
             appt_end_time = appt_start_time + timedelta(minutes=duration)
         else:
             appt_end_time = appointment.end
+            duration = (appt_end_time - appointment.start).seconds // 60
 
-        # if department is entered
+        if 'start' in args:
+            appt_start_time = args['start'].replace(tzinfo=None)
+            appt_end_time = appt_start_time + timedelta(minutes=duration)
+        else:
+            appt_start_time = appointment.start
+
         if 'department' in args:
             department = args['department']
         else:
             department = appointment.department
 
-        # TODO perform same checks we do when we create an appointment
-        # given more time, I would refactor that out to create a new method
+        provider = appointment.provider
+        patient = appointment.patient
 
+        ####################
+        # Check Restrictions
+        ####################
+        if appointment.start < datetime.utcnow():
+            error_text = 'Cannot modify appointments in the past'
+            response = create_response(status_code=400, error=error_text)
+            return response
+
+        booking_start = datetime.now() + timedelta(hours=BOOKING_DELAY_IN_HOURS)
+        if not appt_start_time >= booking_start:
+            error_text = 'Appointment begin before booking window starts'
+            response = create_response(status_code=400, error=error_text)
+            return response
+
+        if duration > MAX_APPT_LENGTH_IN_MINUTES:
+            error_text = 'Appointment length exceeds maximum allowed'
+            response = create_response(status_code=400, error=error_text)
+            return response
+
+        _start_time_overlaps(Appointment.provider_id, provider.id,
+                             appt_start_time, allowed_overlap=[appointment.id])
+        _end_time_overlaps(Appointment.provider_id, provider.id, appt_end_time,
+                           allowed_overlap=[appointment.id])
+
+        ###############
+        # Update record
+        ###############
         appointment.start = appt_start_time
         appointment.end = appt_end_time
         appointment.department = department
-
         db.session.add(appointment)
         db.session.commit()
 
-        return None, 200
+        # Send back result
+        # appointment = getitem_or_404(Appointment, Appointment.id, appointment_id)
+        result = appointment_schema.dump(appointment)
+        return create_response(status_code=200, data=result.data)
