@@ -46,12 +46,15 @@ flask_shell: ## Shell into Flask process
 	docker-compose exec web flask konch
 
 shell: ## Shell into web container
-	docker-compose exec web bash
+	docker-compose exec -u root web bash
 
 dbshell: ## Shell into postgres process inside db container
 	docker-compose exec db psql -U postgres -d sivdev
 
-migrations: up ## Create migrations using flask migrate
+dbclear: ## Shell into db container and delete data (TODO currently doesn't work)
+	docker-compose exec db rm -rf /var/lib/postgresql/data
+
+migration: up ## Create migrations using flask migrate
 	docker-compose exec web flask db migrate -m "$(m)"
 
 migrate: up ## Run migrations using flask migrate
@@ -67,7 +70,7 @@ test_cov: migrate
 	docker-compose exec web pytest --verbose --cov
 
 test_cov_view: migrate
-	docker-compose exec web pytest --runslow --cov --cov-report html && open ./htmlcov/index.html
+	docker-compose exec web pytest --cov --cov-report html && open ./htmlcov/index.html
 
 test_fast: ## Can pass in parameters using p=''
 	docker-compose exec web pytest $(p)
