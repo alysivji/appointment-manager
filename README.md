@@ -19,3 +19,7 @@ When sending back appointment information, we need to think about if we want to 
 * All datetimes are UTC
 * closed interval on appointment start, open interval on appointment end
 * maybe an is_available_function would be a good refactor
+
+## Notes
+
+* I know there is a lot to clean up, but did not take the time to do so as this is a project to show my knowledge. I can discuss what I would clean up if I had more time and needed to deploy to production

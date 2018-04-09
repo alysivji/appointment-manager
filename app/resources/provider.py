@@ -13,8 +13,8 @@ BASE_URL = app.config.get('BASE_URL')
 
 # Configure reading from requests
 PROVIDER_SCHEMA_POST = {
-  'first_name': fields.Str(locations='json', required=True),
-  'last_name': fields.Str(locations='json', required=True),
+  'first_name': fields.Str(required=True),
+  'last_name': fields.Str(required=True),
 }
 
 # Configure serializing models to JSON for response

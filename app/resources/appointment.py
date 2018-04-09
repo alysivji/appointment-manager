@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta
+import json
 
+from flask import request
 from flask_restful import Resource
 from sqlalchemy import and_
 from webargs import fields
@@ -20,16 +22,23 @@ MAX_APPT_LENGTH_IN_MINUTES = app.config.get('MAX_APPT_LENGTH_IN_MINUTES')
 
 # Configure reading from requests
 APPOINTMENT_SCHEMA_POST = {
-    'start': fields.DateTime(locations='json', required=True),
-    'duration': fields.Int(locations='json', required=True),  # in minutes
-    'patient_id': fields.Int(locations='json', required=True),
-    'provider_id': fields.Int(locations='json', required=True),
-    'department': fields.Str(locations='json', required=True),
+    'start': fields.DateTime(required=True),
+    'duration': fields.Int(required=True),  # in minutes
+    'patient_id': fields.Int(required=True),
+    'provider_id': fields.Int(required=True),
+    'department': fields.Str(required=True),
 }
 
 APPOINTMENT_SCHEMA_GET = {
-    'dt_gte': fields.DateTime(locations='query'),
-    'dt_lte': fields.DateTime(locations='query'),
+    'dt_gte': fields.DateTime(location='query'),
+    'dt_lte': fields.DateTime(location='query'),
+}
+
+APPOINTMENT_SCHEMA_PATCH = {
+    'start': fields.DateTime(),
+    'duration': fields.Int(),  # in minutes
+    'department': fields.Str(),
+    'appointment_id': fields.Int(location='view_args', required=True),
 }
 
 # Configure serializing models to JSON for response
@@ -91,12 +100,12 @@ class AppointmentsResource(Resource):
             return output, 400
 
         # is appointment duration longer than allowed
-        appt_length = args['duration']
-        if appt_length > MAX_APPT_LENGTH_IN_MINUTES:
+        duration = args['duration']
+        if duration > MAX_APPT_LENGTH_IN_MINUTES:
             output['error'] = 'Appointment length exceeds maximum allowed'
             return output, 400
 
-        appt_end_time = appt_start_time + timedelta(minutes=appt_length)
+        appt_end_time = appt_start_time + timedelta(minutes=duration)
 
         # TODO check if patient is double booked
 
@@ -152,19 +161,91 @@ class AppointmentsResource(Resource):
 
 
 class AppointmentsItemResource(Resource):
-    def get(self, appointment_id):
-        appointment = Appointment.query.filter(Appointment.id == appointment_id).all()
-        if len(appointment) == 0:
-            return None, 404
+    # TODO refactor getitem_404 into function to prevent repeating code
+    # talk about in code review
 
-        result = appointment_schema.dump(appointment[0])
+    def get(self, appointment_id):
+        output = {
+            'data': None,
+            'error': None,
+        }
+
+        try:
+            appointment = getitem_or_404(Appointment, Appointment.id, appointment_id)
+        except NotFound:
+            output['error'] = 'Appointment not found'
+            return output, 404
+
+        result = appointment_schema.dump(appointment)
         return result.data, 200
 
     def delete(self, appointment_id):
-        appointment = Appointment.query.filter(Appointment.id == appointment_id).all()
-        if len(appointment) == 0:
-            return None, 404
+        output = {
+            'data': None,
+            'error': None,
+        }
 
-        db.session.delete(appointment[0])
+        try:
+            appointment = getitem_or_404(Appointment, Appointment.id, appointment_id)
+        except NotFound:
+            output['error'] = 'Appointment not found'
+            return output, 404
+
+        db.session.delete(appointment)
         db.session.commit()
         return None, 204
+
+    @use_args(APPOINTMENT_SCHEMA_PATCH, locations=('view_args', 'json'))
+    def patch(self, args, appointment_id):
+        """
+        Can change the appointment start time, duration, and department.
+        If you want to change provider and patient, delete and create new.
+        """
+        output = {
+            'data': None,
+            'error': None,
+        }
+
+        try:
+            appointment = getitem_or_404(Appointment, Appointment.id, appointment_id)
+        except NotFound:
+            output['error'] = 'Appointment not found'
+            return output, 404
+
+        # if start time is entered, account for it
+        if 'start' in args:
+            appt_start_time = args['start'].replace(tzinfo=None)
+        else:
+            appt_start_time = appointment.start
+
+        booking_start = (
+            datetime.now() + timedelta(hours=BOOKING_DELAY_IN_HOURS))
+
+        if not appt_start_time >= booking_start:
+            output['error'] = 'Appointment begin before booking window starts'
+            return output, 400
+
+        # if duration is entered, account for it
+        if 'duration' in args:
+            duration = args['duration']
+            appt_end_time = appt_start_time + timedelta(minutes=duration)
+        else:
+            appt_end_time = appointment.end
+
+        # if department is entered
+        if 'department' in args:
+            department = args['department']
+        else:
+            department = appointment.department
+
+        # TODO perform same checks we do when we create an appointment
+        # given more time, I would refactor that out to create a new method
+
+        appointment.start = appt_start_time
+        appointment.end = appt_end_time
+        appointment.department = department
+
+        db.session.add(appointment)
+        db.session.commit()
+
+        return None, 200
