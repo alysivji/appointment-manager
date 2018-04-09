@@ -210,3 +210,37 @@ def test_create_two_appointments_with_no_conflicts(
     for appointment_id in appointment_ids:
         result = client.delete(f'/appointments/{appointment_id}')
         assert result.status_code == 204
+
+
+def test_blah(client, freezer, single_patient, single_provider):
+    """
+    """
+    # Create first appointment
+    freezer.move_to('2018-04-04T10:00:00.000000+00:00')
+    body = {
+        "start": "2018-04-05T10:00:00.000000+00:00",
+        "duration": 60,
+        "provider_id": single_provider,
+        "patient_id": single_patient,
+        "department": "radiology",
+    }
+    result = client.post('/appointments', data=body)
+    assert result.status_code == 201
+    appointment_id = int(result.headers['Location'].split('/')[-1])
+
+    # Move a day in the future (after apopintment has started)
+    freezer.move_to('2018-04-05T11:00:00.000000+00:00')
+
+    # Try to modify first appointment
+    body = {
+        "start": "2018-04-06T13:00:00.000000+00:00"
+    }
+    result = client.patch(f'/appointments/{appointment_id}', data=body)
+
+    assert result.status_code == 400
+
+    resp_body = json.loads(result.get_data(as_text=True))
+    assert resp_body['error'] == 'Cannot modify appointments in the past'
+
+    result = client.delete(f'/appointments/{appointment_id}')
+    assert result.status_code == 204

@@ -113,28 +113,31 @@ class AppointmentsResource(Resource):
 
     @use_args(APPOINTMENT_SCHEMA_POST)
     def post(self, args):
-        # does patient exist?
         patient = getitem_or_404(Patient, Patient.id, args['patient_id'], error_text="Patient not found")
         provider = getitem_or_404(Provider, Provider.id, args['provider_id'], error_text="Provider not found")
 
         # is timeslot in the future (given a delay)
         appt_start_time = args['start'].replace(tzinfo=None)
-        booking_start = (
-            datetime.now() + timedelta(hours=BOOKING_DELAY_IN_HOURS))
+        booking_start = datetime.now() + timedelta(hours=BOOKING_DELAY_IN_HOURS)
 
+        # Some clinics might have rules regarding how far in advance
+        # appointments can be made
         if not appt_start_time >= booking_start:
-            response = create_response(status_code=400, error='Appointment begin before booking window starts')
+            error_text = 'Appointment begin before booking window starts'
+            response = create_response(status_code=400, error=error_text)
             return response
 
         # is appointment duration longer than allowed
         duration = args['duration']
         if duration > MAX_APPT_LENGTH_IN_MINUTES:
-            response = create_response(status_code=400, error='Appointment length exceeds maximum allowed')
+            error_text = 'Appointment length exceeds maximum allowed'
+            response = create_response(status_code=400, error=error_text)
             return response
 
         appt_end_time = appt_start_time + timedelta(minutes=duration)
 
-        # TODO check if patient is double booked (need clarification on requirements)
+        # TODO check if patient is double booked
+        # need clarification on requirements
 
         _start_time_overlaps(Appointment.provider_id, provider.id, appt_start_time)
         _end_time_overlaps(Appointment.provider_id, provider.id, appt_end_time)
@@ -190,6 +193,11 @@ class AppointmentsItemResource(Resource):
         }
 
         appointment = getitem_or_404(Appointment, Appointment.id, appointment_id)
+
+        if appointment.start < datetime.utcnow():
+            error_text = 'Cannot modify appointments in the past'
+            response = create_response(status_code=400, error=error_text)
+            return response
 
         # if start time is entered, account for it
         if 'start' in args:

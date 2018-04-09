@@ -46,10 +46,13 @@ flask_shell: ## Shell into Flask process
 	docker-compose exec web flask konch
 
 shell: ## Shell into web container
-	docker-compose exec web bash
+	docker-compose exec -u root web bash
 
 dbshell: ## Shell into postgres process inside db container
 	docker-compose exec db psql -U postgres -d sivdev
+
+dbclear: ## Shell into db container and delete data (TODO currently doesn't work)
+	docker-compose exec db rm -rf /var/lib/postgresql/data
 
 migration: up ## Create migrations using flask migrate
 	docker-compose exec web flask db migrate -m "$(m)"
