@@ -65,8 +65,8 @@ def _start_time_overlaps(provider_id_field, provider_id, start_time):
 
     if len(appointments_start_time_interrupts):
         response = create_response(
-            error='New appointment starts before already booked appointment ends.',
-            status_code=409)
+            status_code=409,
+            error='New appointment starts before already booked appointment ends.')
         abort(response)
 
 def _end_time_overlaps(provider_id_field, provider_id, end_time):
@@ -84,8 +84,8 @@ def _end_time_overlaps(provider_id_field, provider_id, end_time):
 
     if len(appointments_end_time_interrupts):
         response = create_response(
-            error='New appointment ends after already booked appointment starts.',
-            status_code=409)
+            status_code=409,
+            error='New appointment ends after already booked appointment starts.')
         abort(response)
 
 
@@ -113,25 +113,9 @@ class AppointmentsResource(Resource):
 
     @use_args(APPOINTMENT_SCHEMA_POST)
     def post(self, args):
-        output = {
-            'data': None,
-            'error': None,
-        }
-
         # does patient exist?
-        try:
-            patient = getitem_or_404(Patient, Patient.id, args['patient_id'])
-        except NotFound:
-            output['error'] = 'Patient not found'
-            return output, 404
-
-        # does provider exist?
-        try:
-            provider = getitem_or_404(
-                Provider, Provider.id, args['provider_id'])
-        except NotFound:
-            output['error'] = 'Provider not found'
-            return output, 404
+        patient = getitem_or_404(Patient, Patient.id, args['patient_id'], error_text="Patient not found")
+        provider = getitem_or_404(Provider, Provider.id, args['provider_id'], error_text="Provider not found")
 
         # is timeslot in the future (given a delay)
         appt_start_time = args['start'].replace(tzinfo=None)
@@ -139,14 +123,14 @@ class AppointmentsResource(Resource):
             datetime.now() + timedelta(hours=BOOKING_DELAY_IN_HOURS))
 
         if not appt_start_time >= booking_start:
-            output['error'] = 'Appointment begin before booking window starts'
-            return output, 400
+            response = create_response(status_code=400, error='Appointment begin before booking window starts')
+            return response
 
         # is appointment duration longer than allowed
         duration = args['duration']
         if duration > MAX_APPT_LENGTH_IN_MINUTES:
-            output['error'] = 'Appointment length exceeds maximum allowed'
-            return output, 400
+            response = create_response(status_code=400, error='Appointment length exceeds maximum allowed')
+            return response
 
         appt_end_time = appt_start_time + timedelta(minutes=duration)
 
@@ -155,12 +139,11 @@ class AppointmentsResource(Resource):
         _start_time_overlaps(Appointment.provider_id, provider.id, appt_start_time)
         _end_time_overlaps(Appointment.provider_id, provider.id, appt_end_time)
 
-        # is it during "Office Hours?" for this doctor (another lookup)
+        # TODO is it during "Office Hours?" for this doctor (another lookup)
         is_office_hours = True
-
         if not is_office_hours:
-            output['error'] = 'Office closed'
-            return output, 409
+            response = create_response(status_code=409, error='Office closed')
+            return response
 
         new_appointment = Appointment(start=appt_start_time,
                                       end=appt_end_time,
@@ -180,7 +163,7 @@ class AppointmentsResource(Resource):
         # can handle the webhook from there... since we don't have that
         # have a AppointmentNotifierWebhook
 
-        return create_response(data={}, headers=HEADERS, status_code=201)
+        return create_response(status_code=201, headers=HEADERS, data={})
 
 
 class AppointmentsItemResource(Resource):

@@ -4,6 +4,7 @@ from webargs.flaskparser import use_args
 
 from app import app, db, Patient
 from app.schemas import PatientSchema
+from app.utils import create_response, getitem_or_404
 
 ###############
 # Configuration
@@ -44,23 +45,17 @@ class PatientsResource(Resource):
             'Location': f'{BASE_URL}/patients/{new_patient.id}',
         }
 
-        return {}, 201, HEADERS
+        return create_response(status_code=201, headers=HEADERS, data={})
 
 
 class PatientsItemResource(Resource):
     def get(self, patient_id):
-        patient = Patient.query.filter(Patient.id == patient_id).all()
-        if len(patient) == 0:
-            return None, 404
-
-        result = patient_schema.dump(patient[0])
+        patient = getitem_or_404(Patient, Patient.id, patient_id)
+        result = patient_schema.dump(patient)
         return result.data, 200
 
     def delete(self, patient_id):
-        patient = Patient.query.filter(Patient.id == patient_id).all()
-        if len(patient) == 0:
-            return None, 404
-
-        db.session.delete(patient[0])
+        patient = getitem_or_404(Patient, Patient.id, patient_id)
+        db.session.delete(patient)
         db.session.commit()
         return None, 204

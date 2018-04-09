@@ -23,3 +23,4 @@ When sending back appointment information, we need to think about if we want to 
 ## Notes
 
 * I know there is a lot to clean up, but did not take the time to do so as this is a project to show my knowledge. I can discuss what I would clean up if I had more time and needed to deploy to production
+* Another way to check overlap would be to have the union of doctor's schedule and opening times, and see if there is an overlap

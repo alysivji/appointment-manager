@@ -7,7 +7,7 @@ import json
 from flask import abort, Response
 
 
-def create_response(data=None, headers=None, error=None, status_code=200):
+def create_response(status_code=200, headers=None, data=None, error=None):
     """
     Given data and error, create response
     """
@@ -26,13 +26,14 @@ def create_response(data=None, headers=None, error=None, status_code=200):
     )
 
 
-def getitem_or_404(model, model_id_field, id_to_search):
+def getitem_or_404(model, model_id_field, id_to_search, error_text=None):
     """
     Helper function to search model for given id
     """
     item = model.query.filter(model_id_field == id_to_search).all()
 
     if len(item) == 0:
-        return abort(404)
+        response = create_response(status_code=404, error=error_text)
+        return abort(response)
 
     return item[0]
