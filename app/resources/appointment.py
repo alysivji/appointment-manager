@@ -171,35 +171,15 @@ class AppointmentsItemResource(Resource):
     # talk about in code review
 
     def get(self, appointment_id):
-        output = {
-            'data': None,
-            'error': None,
-        }
-
-        try:
-            appointment = getitem_or_404(Appointment, Appointment.id, appointment_id)
-        except NotFound:
-            output['error'] = 'Appointment not found'
-            return output, 404
-
+        appointment = getitem_or_404(Appointment, Appointment.id, appointment_id)
         result = appointment_schema.dump(appointment)
-        return result.data, 200
+        return create_response(status_code=200, data=result.data)
 
     def delete(self, appointment_id):
-        output = {
-            'data': None,
-            'error': None,
-        }
-
-        try:
-            appointment = getitem_or_404(Appointment, Appointment.id, appointment_id)
-        except NotFound:
-            output['error'] = 'Appointment not found'
-            return output, 404
-
+        appointment = getitem_or_404(Appointment, Appointment.id, appointment_id)
         db.session.delete(appointment)
         db.session.commit()
-        return None, 204
+        return create_response(status_code=204, data={})
 
     @use_args(APPOINTMENT_SCHEMA_PATCH, locations=('view_args', 'json'))
     def patch(self, args, appointment_id):

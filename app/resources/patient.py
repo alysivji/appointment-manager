@@ -52,10 +52,10 @@ class PatientsItemResource(Resource):
     def get(self, patient_id):
         patient = getitem_or_404(Patient, Patient.id, patient_id)
         result = patient_schema.dump(patient)
-        return result.data, 200
+        return create_response(status_code=200, data=result.data)
 
     def delete(self, patient_id):
         patient = getitem_or_404(Patient, Patient.id, patient_id)
         db.session.delete(patient)
         db.session.commit()
-        return None, 204
+        return create_response(status_code=204, data={})

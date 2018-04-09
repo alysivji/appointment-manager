@@ -52,10 +52,10 @@ class ProvidersItemResource(Resource):
     def get(self, provider_id):
         provider = getitem_or_404(Provider, Provider.id, provider_id)
         result = provider_schema.dump(provider)
-        return result.data, 200
+        return create_response(status_code=200, data=result.data)
 
     def delete(self, provider_id):
         provider = getitem_or_404(Provider, Provider.id, provider_id)
         db.session.delete(provider)
         db.session.commit()
-        return None, 204
+        return create_response(status_code=204, data={})
