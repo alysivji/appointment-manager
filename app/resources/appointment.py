@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 import json
 
-from flask import request
+from flask import abort
 from flask_restful import Resource
 from sqlalchemy import and_
 from webargs import fields
@@ -10,7 +10,7 @@ from werkzeug.exceptions import NotFound
 
 from app import app, db, Appointment, Patient, Provider
 from app.schemas import AppointmentSchema
-from app.utils import getitem_or_404
+from app.utils import create_response, getitem_or_404
 
 ###############
 # Configuration
@@ -44,6 +44,49 @@ APPOINTMENT_SCHEMA_PATCH = {
 # Configure serializing models to JSON for response
 appointments_list_schema = AppointmentSchema(many=True)
 appointment_schema = AppointmentSchema()
+
+
+################
+# Helper Methods
+################
+
+def _start_time_overlaps(provider_id_field, provider_id, start_time):
+    """
+    Given start time, find what appointments start time overlaps with
+
+    If there is an overlap, let the user know about the conflict, else continue
+    """
+    appointments_start_time_interrupts = (
+        Appointment.query
+                   .filter(provider_id_field == provider_id)
+                   .filter(and_(start_time >= Appointment.start,
+                                start_time < Appointment.end))
+                   .all())
+
+    if len(appointments_start_time_interrupts):
+        response = create_response(
+            error='New appointment starts before already booked appointment ends.',
+            status_code=409)
+        abort(response)
+
+def _end_time_overlaps(provider_id_field, provider_id, end_time):
+    """
+    Given start time, find what appointments start time overlaps with
+
+    If there is an overlap, let the user know about the conflict, else continue
+    """
+    appointments_end_time_interrupts = (
+        Appointment.query
+                .filter(provider_id_field == provider_id)
+                .filter(and_(end_time > Appointment.start,
+                             end_time <= Appointment.end))
+                .all())
+
+    if len(appointments_end_time_interrupts):
+        response = create_response(
+            error='New appointment ends after already booked appointment starts.',
+            status_code=409)
+        abort(response)
 
 
 ###########
@@ -107,30 +150,10 @@ class AppointmentsResource(Resource):
 
         appt_end_time = appt_start_time + timedelta(minutes=duration)
 
-        # TODO check if patient is double booked
+        # TODO check if patient is double booked (need clarification on requirements)
 
-        # is the doctor already booked for this slot?
-        appointments_start_time_interrupts = (
-            Appointment.query
-                       .filter(Appointment.provider_id == provider.id)
-                       .filter(and_(appt_start_time >= Appointment.start,
-                                    appt_start_time < Appointment.end))
-                       .all())
-
-        if len(appointments_start_time_interrupts):
-            output['error'] = "New appointment starts before already booked appointment ends."
-            return output, 409
-
-        appointments_end_time_interrupts = (
-            Appointment.query
-                       .filter(Appointment.provider_id == provider.id)
-                       .filter(and_(appt_end_time > Appointment.start,
-                                    appt_end_time <= Appointment.end))
-                       .all())
-
-        if len(appointments_end_time_interrupts):
-            output['error'] = "New appointment ends after already booked appointment starts."
-            return output, 409
+        _start_time_overlaps(Appointment.provider_id, provider.id, appt_start_time)
+        _end_time_overlaps(Appointment.provider_id, provider.id, appt_end_time)
 
         # is it during "Office Hours?" for this doctor (another lookup)
         is_office_hours = True
@@ -157,7 +180,7 @@ class AppointmentsResource(Resource):
         # can handle the webhook from there... since we don't have that
         # have a AppointmentNotifierWebhook
 
-        return {}, 201, HEADERS
+        return create_response(data={}, headers=HEADERS, status_code=201)
 
 
 class AppointmentsItemResource(Resource):
