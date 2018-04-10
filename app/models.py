@@ -54,3 +54,13 @@ class Appointment(TimestampMixin, db.Model):
     def __repr__(self):
         return (f'<Appointment {self.patient} with ',
                 f'{self.provider} @ {self.start}>')
+
+
+class Webhook(TimestampMixin, db.Model):
+    """
+    Include this model here because this is a prototype
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), nullable=False)
+    endpoint_url = db.Column(db.String(280), nullable=False)
+    active = db.Column(db.Boolean, nullable=False)
