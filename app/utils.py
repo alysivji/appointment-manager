@@ -28,6 +28,10 @@ def appointment_notification_webhook(notification_type: str, data: Dict) -> None
     If this was going into production, it would make sense to use a message
     queue (RabbitMQ, SQS, PubSub, Kafka) to inform another process which
     would have workers go out and send notifications.
+
+    Also discuss if we should include patient and provider information so the
+    receiving API does not need to make another 2 round-trips to get that
+    information. More requirement clarification
     """
     data_copy = dict(data)
 

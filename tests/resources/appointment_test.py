@@ -8,6 +8,7 @@ import json
 import pytest
 
 from app import app, db, Webhook
+from app.routes import API_PREFIX
 
 BOOKING_DELAY_IN_HOURS = app.config.get('BOOKING_DELAY_IN_HOURS')
 MAX_APPT_LENGTH_IN_MINUTES = app.config.get('MAX_APPT_LENGTH_IN_MINUTES')
@@ -25,11 +26,11 @@ def test_create_appointment(client, single_patient, single_provider):
         "patient_id": single_patient,
         "department": "radiology",
     }
-    result = client.post('/appointments', data=body)
+    result = client.post(f'{API_PREFIX}/appointments', data=body)
     assert result.status_code == 201
 
     appointment_id = int(result.headers['Location'].split('/')[-1])
-    result = client.delete(f'/appointments/{appointment_id}')
+    result = client.delete(f'{API_PREFIX}/appointments/{appointment_id}')
     assert result.status_code == 204
 
 
@@ -51,7 +52,7 @@ def test_create_appointment_before_booking_window_starts(client, single_patient,
         "patient_id": single_patient,
         "department": "radiology",
     }
-    result = client.post('/appointments', data=body)
+    result = client.post(f'{API_PREFIX}/appointments', data=body)
     assert result.status_code == 400
 
     resp_body = json.loads(result.get_data(as_text=True))
@@ -70,7 +71,7 @@ def test_create_appointment_with_nonexistent_provider(client, single_patient, si
         "patient_id": single_patient,
         "department": "radiology",
     }
-    result = client.post('/appointments', data=body)
+    result = client.post(f'{API_PREFIX}/appointments', data=body)
     assert result.status_code == 404
 
 
@@ -86,7 +87,7 @@ def test_create_appointment_with_nonexistent_patient(client, single_patient, sin
         "patient_id": single_patient + 100,
         "department": "radiology",
     }
-    result = client.post('/appointments', data=body)
+    result = client.post(f'{API_PREFIX}/appointments', data=body)
     assert result.status_code == 404
 
 
@@ -102,7 +103,7 @@ def test_create_appointment_exceeding_max_duration(client, single_patient, singl
         "patient_id": single_patient,
         "department": "radiology",
     }
-    result = client.post('/appointments', data=body)
+    result = client.post(f'{API_PREFIX}/appointments', data=body)
     assert result.status_code == 400
 
     resp_body = json.loads(result.get_data(as_text=True))
@@ -122,21 +123,21 @@ def test_create_appointment_that_starts_too_early(client, single_patient, single
         "patient_id": single_patient,
         "department": "radiology",
     }
-    result = client.post('/appointments', data=body)
+    result = client.post(f'{API_PREFIX}/appointments', data=body)
     assert result.status_code == 201
 
     appointment_id = int(result.headers['Location'].split('/')[-1])
 
     # create second appointment
     body['start'] = "2018-04-05T10:59:00.000000+00:00"  # still 1 min left
-    result = client.post('/appointments', data=body)
+    result = client.post(f'{API_PREFIX}/appointments', data=body)
     assert result.status_code == 409
 
     resp_body = json.loads(result.get_data(as_text=True))
     assert resp_body['error'] == (
         "New appointment starts before already booked appointment ends.")
 
-    result = client.delete(f'/appointments/{appointment_id}')
+    result = client.delete(f'{API_PREFIX}/appointments/{appointment_id}')
     assert result.status_code == 204
 
 
@@ -153,7 +154,7 @@ def test_create_appointment_that_ends_too_late(client, single_patient, single_pr
         "patient_id": single_patient,
         "department": "radiology",
     }
-    result = client.post('/appointments', data=body)
+    result = client.post(f'{API_PREFIX}/appointments', data=body)
     assert result.status_code == 201
 
     appointment_id = int(result.headers['Location'].split('/')[-1])
@@ -162,14 +163,14 @@ def test_create_appointment_that_ends_too_late(client, single_patient, single_pr
     body['start'] = "2018-04-05T10:00:00.000000+00:00"
     body['duration'] = 61  # ends 1 minute too late
 
-    result = client.post('/appointments', data=body)
+    result = client.post(f'{API_PREFIX}/appointments', data=body)
     assert result.status_code == 409
 
     resp_body = json.loads(result.get_data(as_text=True))
     assert resp_body['error'] == (
         "New appointment ends after already booked appointment starts.")
 
-    result = client.delete(f'/appointments/{appointment_id}')
+    result = client.delete(f'{API_PREFIX}/appointments/{appointment_id}')
     assert result.status_code == 204
 
 
@@ -186,7 +187,7 @@ def test_create_two_appointments_with_no_conflicts(client, single_patient, singl
         "patient_id": single_patient,
         "department": "radiology",
     }
-    result = client.post('/appointments', data=body)
+    result = client.post(f'{API_PREFIX}/appointments', data=body)
     assert result.status_code == 201
 
     appointment_ids = []
@@ -196,12 +197,12 @@ def test_create_two_appointments_with_no_conflicts(client, single_patient, singl
     body['start'] = "2018-04-05T10:00:00.000000+00:00"
     body['duration'] = 60
 
-    result = client.post('/appointments', data=body)
+    result = client.post(f'{API_PREFIX}/appointments', data=body)
     assert result.status_code == 201
     appointment_ids.append(int(result.headers['Location'].split('/')[-1]))
 
     for appointment_id in appointment_ids:
-        result = client.delete(f'/appointments/{appointment_id}')
+        result = client.delete(f'{API_PREFIX}/appointments/{appointment_id}')
         assert result.status_code == 204
 
 
@@ -219,7 +220,7 @@ def test_modify_already_occured_appointment(
         "patient_id": single_patient,
         "department": "radiology",
     }
-    result = client.post('/appointments', data=body)
+    result = client.post(f'{API_PREFIX}/appointments', data=body)
     assert result.status_code == 201
     appointment_id = int(result.headers['Location'].split('/')[-1])
 
@@ -230,14 +231,14 @@ def test_modify_already_occured_appointment(
     body = {
         "start": "2018-04-06T13:00:00.000000+00:00"
     }
-    result = client.patch(f'/appointments/{appointment_id}', data=body)
+    result = client.patch(f'{API_PREFIX}/appointments/{appointment_id}', data=body)
 
     assert result.status_code == 400
 
     resp_body = json.loads(result.get_data(as_text=True))
     assert resp_body['error'] == 'Cannot modify appointments in the past'
 
-    result = client.delete(f'/appointments/{appointment_id}')
+    result = client.delete(f'{API_PREFIX}/appointments/{appointment_id}')
     assert result.status_code == 204
 
 
@@ -254,7 +255,7 @@ def test_successful_appointment_modification(client, single_patient, single_prov
         "patient_id": single_patient,
         "department": "radiology",
     }
-    result = client.post('/appointments', data=body)
+    result = client.post(f'{API_PREFIX}/appointments', data=body)
     assert result.status_code == 201
     appointment_id = int(result.headers['Location'].split('/')[-1])
 
@@ -264,7 +265,7 @@ def test_successful_appointment_modification(client, single_patient, single_prov
     body = {
         "start": new_start_time
     }
-    result = client.patch(f'/appointments/{appointment_id}', data=body)
+    result = client.patch(f'{API_PREFIX}/appointments/{appointment_id}', data=body)
 
     assert result.status_code == 200
     resp_body = json.loads(result.get_data(as_text=True))['data']
@@ -272,7 +273,7 @@ def test_successful_appointment_modification(client, single_patient, single_prov
     assert resp_body['end'] == new_end_time
     assert resp_body['department'] == 'radiology'
 
-    result = client.delete(f'/appointments/{appointment_id}')
+    result = client.delete(f'{API_PREFIX}/appointments/{appointment_id}')
     assert result.status_code == 204
 
 
@@ -300,11 +301,11 @@ def test_create_appointment_webhook(caplog, client, single_patient, single_provi
         "patient_id": single_patient,
         "department": "radiology",
     }
-    result = client.post('/appointments', data=body)
+    result = client.post(f'{API_PREFIX}/appointments', data=body)
     assert result.status_code == 201
 
     appointment_id = int(result.headers['Location'].split('/')[-1])
-    result = client.delete(f'/appointments/{appointment_id}')
+    result = client.delete(f'{API_PREFIX}/appointments/{appointment_id}')
     assert result.status_code == 204
 
     # check if posting to webhook is successful (200)
