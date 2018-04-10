@@ -11,7 +11,8 @@ from werkzeug.exceptions import NotFound
 
 from app import app, db, Appointment, Patient, Provider
 from app.schemas import AppointmentSchema
-from app.utils import create_response, getitem_or_404
+from app.utils import (
+    appointment_notification_webhook, create_response, getitem_or_404)
 
 ###############
 # Configuration
@@ -137,8 +138,13 @@ class AppointmentsResource(Resource):
 
     @use_args(APPOINTMENT_SCHEMA_POST)
     def post(self, args):
-        patient = getitem_or_404(Patient, Patient.id, args['patient_id'], error_text="Patient not found")
-        provider = getitem_or_404(Provider, Provider.id, args['provider_id'], error_text="Provider not found")
+        ####################
+        # Check Restrictions
+        ####################
+        patient = getitem_or_404(Patient, Patient.id, args['patient_id'],
+                                 error_text="Patient not found")
+        provider = getitem_or_404(Provider, Provider.id, args['provider_id'],
+                                  error_text="Provider not found")
 
         # is timeslot in the future (given a delay)
         appt_start_time = args['start'].replace(tzinfo=None)
@@ -161,22 +167,28 @@ class AppointmentsResource(Resource):
             response = create_response(status_code=409, error='Office closed')
             return response
 
-        new_appointment = Appointment(start=appt_start_time,
-                                      end=appt_end_time,
-                                      department=args['department'],
-                                      patient=patient,
-                                      provider=provider)
-
-        db.session.add(new_appointment)
+        ###################
+        # Store in Database
+        ###################
+        appointment = Appointment(start=appt_start_time,
+                                  end=appt_end_time,
+                                  department=args['department'],
+                                  patient=patient,
+                                  provider=provider)
+        db.session.add(appointment)
         db.session.commit()
 
-        # need to think about best way to implement a webhook
-        # when it's created push it to a pubsub queue
-        # can handle the webhook from there... since we don't have that
-        # have a AppointmentNotifierWebhook
+        #########
+        # Webhook
+        #########
+        result = appointment_schema.dump(appointment)
+        appointment_notification_webhook(notification_type='created', data=result.data)
 
+        ##########
+        # Response
+        ##########
         HEADERS = {
-            'Location': f'{BASE_URL}/appointments/{new_appointment.id}',
+            'Location': f'{BASE_URL}/appointments/{appointment.id}',
         }
         return create_response(status_code=201, headers=HEADERS, data={})
 
@@ -205,6 +217,10 @@ class AppointmentsItemResource(Resource):
         ##################
         # Handle Arguments
         ##################
+        if not args:
+            # TODO what to do if nothing is passed it? clarify requirements
+            pass
+
         if 'duration' in args:
             duration = args['duration']
             appt_end_time = appt_start_time + timedelta(minutes=duration)
@@ -253,6 +269,13 @@ class AppointmentsItemResource(Resource):
         db.session.add(appointment)
         db.session.commit()
 
-        # Send back result
+        #########
+        # Webhook
+        #########
         result = appointment_schema.dump(appointment)
+        appointment_notification_webhook(notification_type='updated', data=result.data)
+
+        ##########
+        # Response
+        ##########
         return create_response(status_code=200, data=result.data)

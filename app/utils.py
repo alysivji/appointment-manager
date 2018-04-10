@@ -2,9 +2,47 @@
 Useful Utility Functions
 """
 
+from datetime import datetime
 import json
+import logging
+from typing import Dict
 
 from flask import abort, Response
+import requests
+
+from app import Webhook
+
+logger = logging.getLogger(__name__)
+
+
+def appointment_notification_webhook(notification_type: str, data: Dict) -> None:
+    """
+    Webhook that goes thru all active webhooks and sends notification if
+    appointment has been created or updated.
+
+    Being a prototype, I'm directly calling the endpoints which subscribed to
+    the appointment_notification webhook. Also passing in data directly,
+    should probably pass in a reference to the database just in case something
+    changes.
+
+    If this was going into production, it would make sense to use a message
+    queue (RabbitMQ, SQS, PubSub, Kafka) to inform another process which
+    would have workers go out and send notifications.
+    """
+    data_copy = dict(data)
+
+    # Create dictionary that we will send to user
+    output = {}
+    output['data']: data_copy['timestamp'] = datetime.utcnow()
+    output['authorization'] = 'Some user specific hash to verify sender'
+    output['timestamp'] = datetime.utcnow()
+    output['type'] = notification_type
+
+    all_active_webhooks = Webhook.query.filter(Webhook.active == True).all()
+
+    for webhook in all_active_webhooks:
+        r = requests.post(webhook.endpoint_url, data=output)
+        logger.info(f"{r.status_code} for {webhook.id}")
 
 
 def create_response(status_code=200, headers=None, data=None, error=None):

@@ -7,7 +7,7 @@ import json
 
 import pytest
 
-from app import app
+from app import app, db, Webhook
 
 BOOKING_DELAY_IN_HOURS = app.config.get('BOOKING_DELAY_IN_HOURS')
 MAX_APPT_LENGTH_IN_MINUTES = app.config.get('MAX_APPT_LENGTH_IN_MINUTES')
@@ -274,3 +274,42 @@ def test_successful_appointment_modification(client, single_patient, single_prov
 
     result = client.delete(f'/appointments/{appointment_id}')
     assert result.status_code == 204
+
+
+@pytest.mark.freeze_time('2018-04-04T10:00:00.000000+00:00')
+def test_create_appointment_webhook(caplog, client, single_patient, single_provider):
+    """
+    Create an appointment and make sure webhook gets
+    """
+    """
+    Create appointment like normal
+    """
+    # create webhook
+    w = Webhook(
+        name='test',
+        endpoint_url='http://web:5000/receive_notifications',
+        active=True
+    )
+    db.session.add(w)
+    db.session.commit()
+
+    body = {
+        "start": "2018-04-05T10:00:00.000000+00:00",
+        "duration": 60,
+        "provider_id": single_provider,
+        "patient_id": single_patient,
+        "department": "radiology",
+    }
+    result = client.post('/appointments', data=body)
+    assert result.status_code == 201
+
+    appointment_id = int(result.headers['Location'].split('/')[-1])
+    result = client.delete(f'/appointments/{appointment_id}')
+    assert result.status_code == 204
+
+    # check if posting to webhook is successful (200)
+    assert len(caplog.record_tuples) > 0
+    assert caplog.record_tuples[0][2].startswith('200 for')
+
+    db.session.delete(w)
+    db.session.commit()

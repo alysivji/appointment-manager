@@ -1,3 +1,5 @@
+import logging.config
+
 from flask import Flask
 from flask_marshmallow import Marshmallow
 from flask_migrate import Migrate
@@ -9,6 +11,8 @@ from app.config import Config
 # create and config app
 app = Flask("app")
 app.config.from_object(Config)
+
+logging.config.dictConfig(app.config.get('LOGGING_CONFIG'))
 
 # set up plugins
 db = SQLAlchemy(app)

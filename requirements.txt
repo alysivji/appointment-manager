@@ -8,4 +8,5 @@ ipython
 gunicorn
 marshmallow-sqlalchemy
 psycopg2
+requests
 webargs
