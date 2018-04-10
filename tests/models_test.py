@@ -8,7 +8,7 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 
 from app import db
-from app.models import Appointment, Patient, Provider
+from app.models import Appointment, Patient, Provider, Webhook
 
 
 def test_create_patient():
@@ -122,3 +122,30 @@ def test_create_invalid_appointment_missing_provider():
 
     db.session.rollback()
     assert len(Appointment.query.all()) == 0
+
+
+def test_create_webhook():
+    """
+    Test creating a webhook
+    """
+    # Arrange
+    w = Webhook(
+        name='test',
+        endpoint_url='http://test.com/test',
+        active=True
+    )
+
+    # Act
+    db.session.add(w)
+    db.session.commit()
+
+    # Assert
+    assert len(Webhook.query.all()) == 1
+
+    queried_webhook = Webhook.query.one()
+    assert queried_webhook.name == 'test'
+    assert queried_webhook.endpoint_url == 'http://test.com/test'
+    assert queried_webhook.active is True
+
+    db.session.delete(w)
+    db.session.commit()

@@ -16,7 +16,7 @@ migrate = Migrate(app, db)
 api = Api(app)
 ma = Marshmallow(app)
 
-from .models import Appointment, Patient, Provider  # noqa
+from .models import Appointment, Patient, Provider, Webhook  # noqa
 from . import routes  # noqa
 
 # set up flask konch (beefed up flask shell)
@@ -26,5 +26,6 @@ app.config.update({
         'Appointment': Appointment,
         'Patient': Patient,
         'Provider': Provider,
+        'Webhook': Webhook,
     }
 })
