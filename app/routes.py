@@ -9,7 +9,7 @@ from app.resources.provider import ProvidersResource, ProvidersItemResource
 
 logger = logging.getLogger(__name__)
 
-API_PREFIX = '/v1/'
+API_PREFIX = '/v1'
 
 @app.route('/')
 def index():

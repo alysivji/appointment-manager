@@ -43,7 +43,7 @@ attach: ## Attach to web container
 	docker attach $(CONTAINER_SHA)
 
 logs:
-	docker logs -f app_web
+	docker-compose logs -f
 
 flask_shell: ## Shell into Flask process
 	docker-compose exec web flask konch

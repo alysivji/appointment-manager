@@ -25,9 +25,9 @@ def appointment_notification_webhook(notification_type: str, data: Dict) -> None
     should probably pass in a reference to the database just in case something
     changes.
 
-    If this was going into production, it would make sense to use a message
-    queue (RabbitMQ, SQS, PubSub, Kafka) to inform another process which
-    would have workers go out and send notifications.
+    If this was going into production, it would make sense to use a task
+    queue and message broker (RabbitMQ, SQS, PubSub, Kafka) to inform another
+    process which would have workers go out and send notifications.
 
     Also discuss if we should include patient and provider information so the
     receiving API does not need to make another 2 round-trips to get that
@@ -37,7 +37,7 @@ def appointment_notification_webhook(notification_type: str, data: Dict) -> None
 
     # Create dictionary that we will send to user
     output = {}
-    output['data']: data_copy['timestamp'] = datetime.utcnow()
+    output['data'] = data_copy
     output['authorization'] = 'Some user specific hash to verify sender'
     output['timestamp'] = datetime.utcnow()
     output['type'] = notification_type

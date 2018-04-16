@@ -19,10 +19,10 @@ App is live at `http://localhost:5000`
 * GET, PATCH, DELETE http://localhost:5000/v1/appointments/:appointment_id
 
 * GET, POST http://localhost:5000/v1/patients
-* GET, PATCH, DELETE http://localhost:5000/v1/patients/:patient_id
+* GET, DELETE http://localhost:5000/v1/patients/:patient_id
 
 * GET, POST http://localhost:5000/v1/providers
-* GET, PATCH, DELETE http://localhost:5000/v1/providers/:provider_id
+* GET, DELETE http://localhost:5000/v1/providers/:provider_id
 ```
 
 Todo: Create /v1/webhooks endpoint to programmatically create endpoint. For now, we need to manually do it via `make flask_shell`

@@ -4,8 +4,7 @@ from . import db
 
 
 class TimestampMixin(object):
-    created = db.Column(db.DateTime, index=True,
-                        nullable=False, default=datetime.utcnow)
+    created = db.Column(db.DateTime, index=True, nullable=False, default=datetime.utcnow)
     updated = db.Column(db.DateTime, onupdate=datetime.utcnow)
 
 
@@ -42,10 +41,8 @@ class Appointment(TimestampMixin, db.Model):
     start = db.Column(db.DateTime, nullable=False)
     end = db.Column(db.DateTime, nullable=False)
     department = db.Column(db.String(50), nullable=False)
-    patient_id = db.Column(
-        db.Integer, db.ForeignKey('patient.id'), nullable=False)
-    provider_id = db.Column(
-        db.Integer, db.ForeignKey('provider.id'), nullable=False)
+    patient_id = db.Column(db.Integer, db.ForeignKey('patient.id'), nullable=False)
+    provider_id = db.Column(db.Integer, db.ForeignKey('provider.id'), nullable=False)
 
     # Relationships
     patient = db.relationship('Patient', back_populates='appointments')

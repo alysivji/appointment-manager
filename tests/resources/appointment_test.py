@@ -206,8 +206,7 @@ def test_create_two_appointments_with_no_conflicts(client, single_patient, singl
         assert result.status_code == 204
 
 
-def test_modify_already_occured_appointment(
-        client, freezer, single_patient, single_provider):
+def test_modify_already_occured_appointment(client, freezer, single_patient, single_provider):
     """
     Create an appointment and try to modify it after it occurs
     """
@@ -280,10 +279,7 @@ def test_successful_appointment_modification(client, single_patient, single_prov
 @pytest.mark.freeze_time('2018-04-04T10:00:00.000000+00:00')
 def test_create_appointment_webhook(caplog, client, single_patient, single_provider):
     """
-    Create an appointment and make sure webhook gets
-    """
-    """
-    Create appointment like normal
+    Create an appointment and make sure webhook gets called
     """
     # create webhook
     w = Webhook(

@@ -15,7 +15,7 @@ services:
     environment:
       - FLASK_APP=app/__init__.py
     image: app_web
-    command: ["gunicorn", "app:app", "-b", "0.0.0.0:5000", "--workers", "4", "--reload", "--timeout",  "100000"]
+    command: ["gunicorn", "app:app", "-b", "0.0.0.0:5000", "--workers", "1", "--reload", "--timeout",  "100000"]
     depends_on:
       - db
     volumes:
